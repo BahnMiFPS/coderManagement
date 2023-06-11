@@ -1,6 +1,7 @@
 const { sendResponse, AppError } = require("../helpers/utils.js");
 const { body, validationResult } = require("express-validator");
 const Task = require("../models/Task.js");
+const mongoose = require("mongoose");
 
 const TaskController = {};
 //Create a Task
@@ -96,15 +97,25 @@ TaskController.getAllTasks = async (req, res, next) => {
 TaskController.getTaskById = async (req, res, next) => {
   //in real project you will getting condition from from req then construct the filter object for query
   // empty filter mean get all
+
   try {
     let { id } = req.params;
+    const isIdValid = mongoose.Types.ObjectId.isValid(id);
+
+    if (!isIdValid) {
+      sendResponse(res, 404, false, null, "Bad Request", "ID invalid");
+      return;
+    }
     let filter = {};
     if (id) {
       filter = id;
     }
     //mongoose query
-    const data = await Task.findById(filter);
-
+    const data = await Task.findById(filter).populate("assignee");
+    if (!data) {
+      sendResponse(res, 404, false, null, "Not Found", "Task not found");
+      return;
+    }
     //this to query data from the reference and append to found result.
 
     sendResponse(res, 200, true, data, null, `Found task with ${id}`);
